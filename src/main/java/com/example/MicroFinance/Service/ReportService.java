@@ -1,120 +1,123 @@
 package com.example.MicroFinance.Service;
 
-import com.example.MicroFinance.Model.Category;
-import com.example.MicroFinance.Model.MonthlyReport;
-import com.example.MicroFinance.Model.Request.MonthlyReportDTO;
-import com.example.MicroFinance.Model.Transaction;
-import com.example.MicroFinance.Repository.ReportRepository;
-import com.example.MicroFinance.Repository.TransactionRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.stereotype.Service;
-
-import java.io.File;
+import java.io.BufferedWriter;
 import java.io.FileWriter;
-import java.io.IOException;
-import java.time.LocalDate;
 import java.time.Month;
+import java.util.stream.Collectors;
+import com.example.MicroFinance.Model.Report;
+import com.example.MicroFinance.Repository.ReportRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import java.io.IOException;
+import java.time.YearMonth;
 import java.util.*;
+    @Service
+    public class ReportService {
 
-@Service
-public class ReportService {
+        private final ReportRepository reportRepository;
 
-    private final TransactionRepository transactionRepository;
-    private final ReportRepository reportRepository;
+        @Autowired
+        public ReportService(ReportRepository reportRepository) {
 
-    public ReportService(TransactionRepository transactionRepository, ReportRepository reportRepository) {
-        this.transactionRepository = transactionRepository;
-        this.reportRepository = reportRepository;
-    }
+            this.reportRepository = reportRepository;
+        }
 
-    public MonthlyReport generateMonthlyReport(Long userId, int month, int year) {
-        List<Transaction> userTransactions = transactionRepository.findByUserId(userId).stream()
-                .filter(t -> t.getDate().getMonthValue() == month && t.getDate().getYear() == year)
-                .toList();
+        public Map<String, Object> generateMonthlyReport(int year, int month) {
+            YearMonth yearMonth = YearMonth.of(year, month);
+            Date startDate = java.sql.Date.valueOf(yearMonth.atDay(1));
+            Date endDate = java.sql.Date.valueOf(yearMonth.atEndOfMonth());
 
-        double totalIncome = userTransactions.stream()
-                .filter(t -> t.getAmount() > 0)
-                .mapToDouble(Transaction::getAmount)
-                .sum();
+            List<Report> records = reportRepository.findByDateBetween(startDate, endDate);
 
-        double totalExpense = userTransactions.stream()
-                .filter(t -> t.getAmount() < 0)
-                .mapToDouble(t -> Math.abs(t.getAmount()))
-                .sum();
 
-        double savings = totalIncome - totalExpense;
+            double totalIncome = records.stream()
+                    .filter(r -> r.getType().equalsIgnoreCase("income"))
+                    .mapToDouble(Report::getAmount)
+                    .sum();
 
-        // En çok harcama yapılan kategori
-        Map<Category, Double> expenseByCategory = new HashMap<>();
-        for (Transaction t : userTransactions) {
-            if (t.getAmount() < 0) {
-                String category = t.getCategory();
-                double amount = Math.abs(t.getAmount());
+            double totalExpense = records.stream()
+                    .filter(r -> r.getType().equalsIgnoreCase("expense"))
+                    .mapToDouble(Report::getAmount)
+                    .sum();
 
-                Category category1= new Category();
-                category1.setName(category);
-                expenseByCategory.put(category1, expenseByCategory.getOrDefault(category, 0.0) + amount);
+            double savings = totalIncome - totalExpense;
+
+            String topCategory = (String) records.stream()
+                    .filter(r -> r.getType().equalsIgnoreCase("expense"))
+                    .collect(Collectors.groupingBy(Report::getCategory, Collectors.summingDouble(Report::getAmount)))
+                    .entrySet().stream()
+                    .max(Map.Entry.comparingByValue())
+                    .map(Map.Entry::getKey)
+                    .orElse("Yok");
+
+            Map<String, Object> jsonReport = new LinkedHashMap<>();
+            jsonReport.put("year", year);
+            jsonReport.put("month", month);
+            jsonReport.put("totalIncome", totalIncome);
+            jsonReport.put("totalExpense", totalExpense);
+            jsonReport.put("savings", savings);
+            jsonReport.put("topSpendingCategory", topCategory);
+
+            return jsonReport;
+        }
+
+        public String getMonthlyReportAsJson(int year, int month) {
+            Map<String, Object> report = generateMonthlyReport(year, month);
+
+            StringBuilder jsonBuilder = new StringBuilder();
+            jsonBuilder.append("{\n");
+            int i = 0;
+            int size = report.size();
+
+            for (Map.Entry<String, Object> entry : report.entrySet()) {
+                jsonBuilder.append("  \"")
+                        .append(entry.getKey())
+                        .append("\": ");
+
+                if (entry.getValue() instanceof String) {
+                    jsonBuilder.append("\"").append(entry.getValue()).append("\"");
+                } else {
+                    jsonBuilder.append(entry.getValue());
+                }
+
+                if (++i < size) {
+                    jsonBuilder.append(",");
+                }
+
+                jsonBuilder.append("\n");
+            }
+
+            jsonBuilder.append("}");
+            return jsonBuilder.toString();
+        }
+        public void backupReportsToTxt(String filePath) {
+            List<Report> reports = reportRepository.findAll(); // tüm harcamaları getir
+
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
+                for (Report report : reports) {
+                    writer.write("Tarih: " + report.getDate() +
+                            ", Tutar: " + report.getAmount() +
+                            ", Tür: " + report.getType() +
+                            ", Kategori: " + report.getCategory());
+                    writer.newLine();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
 
-        Category mostSpentCategory = null;
-        double maxSpent = 0;
-        for (Map.Entry<Category, Double> entry : expenseByCategory.entrySet()) {
-            if (entry.getValue() > maxSpent) {
-                maxSpent = entry.getValue();
-                mostSpentCategory = entry.getKey();
-            }
+        public Object getReportsByUserId(long userId) {
+            return reportRepository.findByUserId(userId);
         }
 
-        MonthlyReport report = new MonthlyReport();
-        report.setUserId(userId);
-        report.setMonth(Month.of(month));
-        report.setYear(year);
-        report.setTotalIncome(totalIncome);
-        report.setTotalExpense(totalExpense);
-        report.setSavings(savings);
-        report.setMostSpentCategory(mostSpentCategory != null ? mostSpentCategory.getName() : "Belirlenemedi");
-        report.setGeneratedDate(LocalDate.now());
+        public Optional getMonthlyReportByUserId(long userId, int month, int year) {
+                  return reportRepository.findByUserIdAndMonthAndYear(userId, month, year);
+        }
 
-        return reportRepository.save(report);
-    }
 
-    public List<MonthlyReport> getReportsByUserId(Long userId) {
-        return reportRepository.findByUserId(userId);
-    }
-
-    public <Report> Optional<Report> getMonthlyReportByUserId(Long userId, int month, int year) {
-        return reportRepository.findByUserIdAndMonthAndYear(userId, month, year);
-    }
-
-    public String exportMonthlyReportToFile(int userId, int month, int year) {
-        try {
-            // 1. Raporu oluştur
-            MonthlyReport report = generateMonthlyReport(Long.valueOf(userId), month, year);
-
-            // 2. JSON'a çevir
-            ObjectMapper objectMapper = new ObjectMapper();
-            String json = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(report);
-
-            // 3. Dosya adı ve yolu
-            String fileName = "report_user" + userId + "_" + month + "_" + year + ".json";
-            String filePath = "reports/" + fileName;
-
-            // 4. Dosyaya yaz
-            File directory = new File("reports");
-            if (!directory.exists()) {
-                directory.mkdirs(); // klasörü oluştur
-            }
-
-            try (FileWriter writer = new FileWriter(filePath)) {
-                writer.write(json);
-                return filePath; // başarılıysa dosya yolu dön
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-            throw new RuntimeException("Could not write report to file: " + e.getMessage());
+        public String exportMonthlyReportToFile(int userId, int month, int year) {
+            return year + "-" + month + "-" + userId;
         }
     }
 
-}
 

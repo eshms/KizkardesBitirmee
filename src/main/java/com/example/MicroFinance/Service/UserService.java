@@ -9,12 +9,14 @@ import java.util.Optional;
 import java.util.List;
 import java.util.Collection;
 
-
+// Service katmanı: İş kuralları burada yazılır.
+// Controller'dan gelen istekleri işler ve Repository ile veritabanı etkileşimini yönetir.
 @Service
 public class UserService  {
 
     private final UserRepository userRepository;
 
+    // Constructor-based dependency injection
     @Autowired
     public UserService(UserRepository userRepository) {
         this.userRepository = userRepository;
@@ -23,13 +25,14 @@ public class UserService  {
 
     // Yeni kullanıcı ekleme
     public User addUser(User user) {
-        if (userRepository.existsByEmail(user.getEmail())){
+        if (userRepository.getUsersByEmail(user.getEmail())){
             throw new ValidationException("Bu email ile kayıtlı kullanıcı bulunmaktadır.");
         }
-        User savedUser = userRepository.save(user);
+        User savedUser = userRepository.save(user);// Kullanıcı veritabanına kaydedilir
         return savedUser;
     }
 
+    // Tüm kullanıcıları veritabanından çekip döner
     // Tüm kullanıcıları listeleme
     public List<User> getAllUsers() {
         return userRepository.findAll();
@@ -40,7 +43,9 @@ public class UserService  {
         return userRepository.findById(id).orElseThrow();
     }
 
+    // Kayıt işlemi (register): kullanıcıyı veritabanına kaydeder
     public User register(User user) {
-        return userRepository.save(user);
+        this.userRepository.save(user);
+        return user;
     }
 }

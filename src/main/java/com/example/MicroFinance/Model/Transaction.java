@@ -18,6 +18,10 @@ public class Transaction {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @ManyToOne
+    @JoinColumn(name = "user_id")
+    private User user;
+
     @NotBlank(message = "Description cannot be null")
     @Size(min = 2, max = 100, message = "Description must be between 2 and 100 characters")
     private String description; // Gelir veya gider açıklaması

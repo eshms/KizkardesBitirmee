@@ -6,6 +6,9 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
+
+//bir veri transfer nesnesidir (DTO = Data Transfer Object).
+//API'den
 @Getter
 @Setter
 public class UserRequestDTO {
@@ -21,6 +24,4 @@ public class UserRequestDTO {
     @NotNull(message = "Password cannot be null")
     private String password;
 
-    // İç içe sınıfı SİL
-    // @Data public class UserrRequestDTO {...} kısmını kaldırdık
 }

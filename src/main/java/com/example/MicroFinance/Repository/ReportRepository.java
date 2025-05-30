@@ -1,16 +1,21 @@
 package com.example.MicroFinance.Repository;
 
-import com.example.MicroFinance.Model.MonthlyReport;
+import com.example.MicroFinance.Model.Report;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.Month;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
-public interface ReportRepository extends JpaRepository<MonthlyReport, Long> {
-    List<MonthlyReport> findByUserId(Long userId);
-    MonthlyReport findById(long id);
-    List<MonthlyReport> findByYear(int year);
-    List<MonthlyReport> findByMonth(int month);
+public interface ReportRepository extends JpaRepository<Report, Long> {
+    List<Report> findByUserId(Long userId);
+    Report findById(long id);
+    List<Report> findByYear(int year);
+    List<Report> findByMonth(int month);
 
-    <Report> Optional<Report> findByUserIdAndMonthAndYear(Long userId, int month, int year);
+    List<Report> findByDateBetween(Date startDate, Date endDate);
+
+    Optional<Report> findByUserIdAndMonthAndYear(Long userId, Integer month, Integer year);
+
 }

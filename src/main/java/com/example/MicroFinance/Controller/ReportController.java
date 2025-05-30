@@ -3,8 +3,8 @@ package com.example.MicroFinance.Controller;
 import com.example.MicroFinance.Model.Request.MonthlyReportDTO;
 import com.example.MicroFinance.Service.ReportService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.Optional;
 
 @RestController
@@ -14,7 +14,7 @@ public class ReportController {
     @Autowired
     private ReportService reportService;
 
-    // ✔ Aylık özet rapor: gelir, gider, tasarruf
+    //Aylık özet rapor: gelir, gider, tasarruf
     @GetMapping("/monthly-summary")
     public MonthlyReportDTO getMonthlySummary(
             @RequestParam int userId,
@@ -23,7 +23,7 @@ public class ReportController {
         return (MonthlyReportDTO) reportService.getReportsByUserId((long) userId);
     }
 
-    // ✔ En çok harcama yapılan kategori
+    // En çok harcama yapılan kategori
     @GetMapping("/top-category")
     public Optional getTopSpendingCategory(
             @RequestParam int userId,
@@ -32,12 +32,23 @@ public class ReportController {
         return reportService.getMonthlyReportByUserId((long) userId, month, year);
     }
 
-    // ✔ Aylık özet JSON dosyası olarak dışa aktar (rapor kaydı)
+    //Aylık özet JSON dosyası olarak dışa aktar (rapor kaydı)
     @GetMapping("/export")
     public String exportMonthlyReport(
             @RequestParam int userId,
             @RequestParam int month,
             @RequestParam int year) {
         return reportService.exportMonthlyReportToFile(userId, month, year);
+
     }
+
+
+    //yedekleme için endpoint
+    @GetMapping("/report/backup")
+    public ResponseEntity<String> backupReportsToTxt() {
+        String path = "yedek_rapor.txt"; // proje klasörüne yazılır
+        reportService.backupReportsToTxt(path);
+        return ResponseEntity.ok("Yedekleme başarılı: " + path);
+    }
+
 }
