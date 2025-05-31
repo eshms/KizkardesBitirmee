@@ -1,5 +1,5 @@
 ## Mikro Finans Takip Sistemi - Spring Boot Edition
-Dress Rental App, Java Spring Boot ile geliştirilmiş bir backend uygulamasıdır. Bu proje, web servisleri oluşturma, RESTful API geliştirme, Spring Boot ile veritabanı işlemleri ve hata yönetimi gibi konuları içermektedir.
+Mikro finans App, Java Spring Boot ile geliştirilmiş bir backend uygulamasıdır. Bu proje, web servisleri oluşturma, RESTful API geliştirme, Spring Boot ile veritabanı işlemleri ve hata yönetimi gibi konuları içermektedir.
 
 ## Özellikler
 - Spring Boot: RESTful API geliştirmek için kullanılmıştır.
